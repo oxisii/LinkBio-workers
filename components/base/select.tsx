@@ -18,7 +18,7 @@ export const SelectItemIndicator = Select.ItemIndicator;
 export const SelectIcon = Select.Icon;
 
 export const selectTriggerClass = cn(
-  "flex h-11 w-full items-center justify-between gap-2 rounded-[var(--admin-radius-control)]",
+  "flex h-10 min-h-10 w-full items-center justify-between gap-2 rounded-[var(--admin-radius-control)]",
   "bg-admin-control px-3 text-sm font-medium text-admin-text ring-1 ring-admin-line",
   "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-admin-focus",
   "data-disabled:opacity-50",
@@ -29,6 +29,7 @@ export const selectPopupClass = cn(
   "rounded-[var(--admin-radius-control)] bg-admin-elevated p-1 shadow-lg ring-1 ring-admin-line",
   "transition-[transform,opacity] data-ending-style:scale-95 data-ending-style:opacity-0",
   "data-starting-style:scale-95 data-starting-style:opacity-0",
+  "motion-reduce:transition-none",
 );
 
 export const selectItemClass = cn(

@@ -1,5 +1,6 @@
-import { AdminPrefsToolbar } from "@/components/admin/prefs-toolbar";
+import { AdminAppShell, type AdminShellLabels } from "@/components/admin/app-shell";
 import { getAdminUi, prefsToolbarLabels } from "@/lib/admin-ui";
+import { getCsrfToken } from "@/lib/csrf";
 
 function modeFromPref(pref: string | null | undefined): "light" | "dark" | "system" {
   if (pref === "light" || pref === "dark") return pref;
@@ -7,10 +8,21 @@ function modeFromPref(pref: string | null | undefined): "light" | "dark" | "syst
 }
 
 export default async function AdminRootLayout({ children }: { children: React.ReactNode }) {
-  // CSRF is issued in middleware — never cookies().set during RSC render (Next 15 → 500).
   let colorMode: "system" | "light" | "dark" = "system";
   let localePref: "auto" | "zh-CN" | "en" = "auto";
-  let labels = {
+  let siteName = "LinkBio";
+  let csrf = "";
+  let labels: AdminShellLabels = {
+    overview: "Overview",
+    profile: "Profile",
+    links: "Links",
+    theme: "Theme",
+    data: "Data",
+    publicSite: "Public site",
+    logout: "Logout",
+    menu: "Menu",
+    close: "Close",
+    appearance: "Appearance",
     color: "Color mode",
     system: "System",
     light: "Light",
@@ -25,7 +37,29 @@ export default async function AdminRootLayout({ children }: { children: React.Re
     const ui = await getAdminUi();
     colorMode = ui.colorMode;
     localePref = ui.localePref;
-    labels = prefsToolbarLabels(ui.t);
+    siteName = ui.siteName;
+    csrf = await getCsrfToken();
+    const tb = prefsToolbarLabels(ui.t);
+    labels = {
+      overview: ui.t("admin.nav.overview"),
+      profile: ui.t("admin.nav.profile"),
+      links: ui.t("admin.nav.links"),
+      theme: ui.t("admin.nav.theme"),
+      data: ui.t("admin.nav.data"),
+      publicSite: ui.t("admin.nav.public"),
+      logout: ui.t("admin.nav.logout"),
+      menu: ui.t("admin.nav.menu"),
+      close: ui.t("admin.nav.close"),
+      appearance: ui.t("admin.nav.appearance"),
+      color: tb.color,
+      system: tb.system,
+      light: tb.light,
+      dark: tb.dark,
+      locale: tb.locale,
+      auto: tb.auto,
+      zh: tb.zh,
+      en: tb.en,
+    };
   } catch {
     /* bindings unavailable during some tool paths */
   }
@@ -41,8 +75,15 @@ export default async function AdminRootLayout({ children }: { children: React.Re
           }}
         />
       ) : null}
-      <AdminPrefsToolbar colorMode={colorMode} localePref={localePref} labels={labels} />
-      {children}
+      <AdminAppShell
+        siteName={siteName}
+        csrf={csrf}
+        colorMode={colorMode}
+        localePref={localePref}
+        labels={labels}
+      >
+        {children}
+      </AdminAppShell>
     </div>
   );
 }

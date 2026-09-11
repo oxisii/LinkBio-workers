@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import { Input, InputArea } from "@/components/base/field";
 import { SubmitButton } from "@/components/base/submit-button";
+import { SwitchField } from "@/components/base/switch";
 import { saveSettingsAction } from "../actions";
 import { AdminSelect } from "@/components/admin/admin-select";
-import { AdminNav } from "@/components/admin/nav";
+import { AdminPageHeader, AdminSection } from "@/components/admin/app-shell";
 import { Flash } from "@/components/admin/flash";
-import { AdminPanel } from "@/components/admin/panel";
 import { isAdminSession } from "@/lib/auth";
 import { getAdminUi } from "@/lib/admin-ui";
 import { getCsrfToken } from "@/lib/csrf";
@@ -16,7 +16,6 @@ import { listThemes, resolveThemeId } from "@/lib/themes";
 
 export const dynamic = "force-dynamic";
 
-/** Lightweight preview swatches (admin-only hint, not loaded from CSS) */
 const PREVIEW: Record<string, { a: string; b: string; c: string }> = {
   aurora: { a: "hsl(232 78% 58%)", b: "hsl(175 55% 55%)", c: "hsl(230 40% 96%)" },
   base: { a: "hsl(232 78% 58%)", b: "hsl(175 55% 55%)", c: "hsl(230 40% 96%)" },
@@ -36,7 +35,7 @@ export default async function ThemePage({
   searchParams: Promise<{ msg?: string }>;
 }) {
   if (!(await isAdminSession())) redirect("/admin/login");
-  const { store, env, settings, siteName, t, locale } = await getAdminUi();
+  const { store, env, settings, t, locale } = await getAdminUi();
   const csrf = await getCsrfToken();
   const sp = await searchParams;
   const flash = await resolveAdminFlash(sp.msg);
@@ -46,102 +45,50 @@ export default async function ThemePage({
   const siteDefault = env.DEFAULT_THEME || "minimal";
 
   return (
-    <div className="admin-shell">
-      <AdminNav active="theme" siteName={siteName} csrf={csrf} t={t} />
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-admin-strong">
-          {t("admin.page.theme")}
-        </h1>
-        <p className="text-sm text-admin-muted">{t("admin.subtitle")}</p>
-      </header>
-      <AdminPanel title={t("admin.theme.title")}>
-        <Flash message={flash} />
-        <form action={saveSettingsAction} className="space-y-6">
-          <input type="hidden" name={CSRF_FIELD} value={csrf} />
+    <>
+      <AdminPageHeader title={t("admin.page.theme")} description={t("admin.theme.subtitle")} />
+      <Flash message={flash} />
+      <form action={saveSettingsAction} className="space-y-6">
+        <input type="hidden" name={CSRF_FIELD} value={csrf} />
 
-          <div className="space-y-3">
-            <p className="text-sm font-medium text-admin-text">{t("admin.theme.theme")}</p>
-            <p className="text-xs text-admin-muted">
-              {t("admin.theme.defaultThemeHint", {
-                default: siteDefault,
-                current: currentThemeId,
-              })}
-            </p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {themes.map((th) => {
-                const sw = PREVIEW[th.id] || PREVIEW.aurora!;
-                const title = localeZh ? th.nameZh : th.name;
-                const desc = themeDescription(t, th.id, th.description);
-                return (
-                  <label key={th.id} className="admin-theme-card">
-                    <input
-                      type="radio"
-                      name="theme"
-                      value={th.id}
-                      defaultChecked={currentThemeId === th.id}
-                      className="sr-only"
-                    />
-                    <div className="mb-2 flex gap-1">
-                      <span className="h-6 flex-1 rounded-md" style={{ background: sw.a }} />
-                      <span className="h-6 flex-1 rounded-md" style={{ background: sw.b }} />
-                      <span className="h-6 flex-1 rounded-md" style={{ background: sw.c }} />
-                    </div>
-                    <div className="text-sm font-medium text-admin-text">
-                      {title}{" "}
-                      <span className="font-mono text-xs text-admin-muted">({th.id})</span>
-                    </div>
-                    {desc ? (
-                      <p className="mt-0.5 text-xs text-admin-muted">{desc}</p>
-                    ) : null}
-                  </label>
-                );
-              })}
-            </div>
+        <AdminSection
+          title={t("admin.theme.theme")}
+          description={t("admin.theme.defaultThemeHint", {
+            default: siteDefault,
+            current: currentThemeId,
+          })}
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            {themes.map((th) => {
+              const sw = PREVIEW[th.id] || PREVIEW.aurora!;
+              const title = localeZh ? th.nameZh : th.name;
+              const desc = themeDescription(t, th.id, th.description);
+              return (
+                <label key={th.id} className="admin-theme-card">
+                  <input
+                    type="radio"
+                    name="theme"
+                    value={th.id}
+                    defaultChecked={currentThemeId === th.id}
+                    className="sr-only"
+                  />
+                  <div className="mb-2 flex h-10 gap-1 overflow-hidden rounded-md">
+                    <span className="flex-1" style={{ background: sw.a }} />
+                    <span className="flex-1" style={{ background: sw.b }} />
+                    <span className="flex-1" style={{ background: sw.c }} />
+                  </div>
+                  <div className="text-sm font-medium text-admin-text">
+                    {title}{" "}
+                    <span className="font-mono text-xs font-normal text-admin-muted">({th.id})</span>
+                  </div>
+                  {desc ? <p className="mt-0.5 line-clamp-2 text-xs text-admin-muted">{desc}</p> : null}
+                </label>
+              );
+            })}
           </div>
+        </AdminSection>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              id="accentColor"
-              name="accentColor"
-              label={t("admin.theme.accent")}
-              defaultValue={settings.accentColor}
-              pattern="#[0-9a-fA-F]{3,8}"
-              placeholder={t("admin.theme.accentPlaceholder")}
-              required={false}
-            />
-            <Input
-              id="background"
-              name="background"
-              type="url"
-              label={t("admin.theme.background")}
-              defaultValue={settings.background}
-              placeholder={t("admin.theme.backgroundPlaceholder")}
-              required={false}
-            />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <AdminSelect
-              id="themeColorMode"
-              name="themeColorMode"
-              label={t("admin.theme.themeColorMode")}
-              defaultValue={settings.themeColorMode}
-              options={[
-                { value: "default", label: t("admin.theme.themeColorMode.default") },
-                { value: "system", label: t("admin.theme.themeColorMode.system") },
-                { value: "custom", label: t("admin.theme.themeColorMode.custom") },
-              ]}
-            />
-            <Input
-              id="customColor"
-              name="customColor"
-              label={t("admin.theme.customColor")}
-              defaultValue={settings.customColor}
-              pattern="#[0-9a-fA-F]{3,8}"
-              placeholder={t("admin.theme.accentPlaceholder")}
-              required={false}
-              description={t("admin.theme.customColorHint")}
-            />
-          </div>
+        <AdminSection title={t("admin.theme.colorMode")}>
           <div className="grid gap-4 sm:grid-cols-2">
             <AdminSelect
               id="colorMode"
@@ -165,19 +112,62 @@ export default async function ThemePage({
               ]}
             />
           </div>
-          <div className="space-y-3 rounded-xl border border-admin-border p-4">
-            <h2 className="font-medium text-admin-strong">{t("admin.theme.footerTitle")}</h2>
-            <p className="text-xs text-admin-muted">{t("admin.theme.footerHint")}</p>
-            <label className="flex items-center gap-2 text-sm text-admin-text">
-              <input
-                type="checkbox"
-                name="showFooter"
-                value="1"
-                defaultChecked={settings.showFooter && settings.footerMode !== "off"}
-                className="size-4"
-              />
+        </AdminSection>
+
+        <AdminSection
+          title={t("admin.theme.themeColorMode")}
+          description={t("admin.theme.customColorHint")}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <AdminSelect
+              id="themeColorMode"
+              name="themeColorMode"
+              label={t("admin.theme.themeColorMode")}
+              defaultValue={settings.themeColorMode}
+              options={[
+                { value: "default", label: t("admin.theme.themeColorMode.default") },
+                { value: "system", label: t("admin.theme.themeColorMode.system") },
+                { value: "custom", label: t("admin.theme.themeColorMode.custom") },
+              ]}
+            />
+            <Input
+              id="customColor"
+              name="customColor"
+              label={t("admin.theme.customColor")}
+              defaultValue={settings.customColor}
+              pattern="#[0-9a-fA-F]{3,8}"
+              placeholder={t("admin.theme.accentPlaceholder")}
+              required={false}
+            />
+            <Input
+              id="accentColor"
+              name="accentColor"
+              label={t("admin.theme.accent")}
+              defaultValue={settings.accentColor}
+              pattern="#[0-9a-fA-F]{3,8}"
+              placeholder={t("admin.theme.accentPlaceholder")}
+              required={false}
+            />
+            <Input
+              id="background"
+              name="background"
+              type="url"
+              label={t("admin.theme.background")}
+              defaultValue={settings.background}
+              placeholder={t("admin.theme.backgroundPlaceholder")}
+              required={false}
+            />
+          </div>
+        </AdminSection>
+
+        <AdminSection title={t("admin.theme.footerTitle")} description={t("admin.theme.footerHint")}>
+          <div className="space-y-4">
+            <SwitchField
+              name="showFooter"
+              defaultChecked={settings.showFooter && settings.footerMode !== "off"}
+            >
               {t("admin.theme.showFooter")}
-            </label>
+            </SwitchField>
             <AdminSelect
               id="footerMode"
               name="footerMode"
@@ -202,11 +192,14 @@ export default async function ThemePage({
               required={false}
             />
           </div>
+        </AdminSection>
+
+        <div className="admin-form-actions">
           <SubmitButton type="submit" variant="primary" pendingLabel={t("admin.common.saving")}>
             {t("admin.theme.save")}
           </SubmitButton>
-        </form>
-      </AdminPanel>
-    </div>
+        </div>
+      </form>
+    </>
   );
 }

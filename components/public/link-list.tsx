@@ -45,9 +45,8 @@ export function LinkList({
               }
             }}
             className={cn(
-              "theme-link group flex items-center gap-3 border border-border bg-card/80 px-4 py-3.5",
-              "text-sm font-medium shadow-sm transition",
-              "hover:border-primary/40 hover:bg-card hover:shadow-md",
+              "theme-link group flex items-center gap-3 px-4 py-3.5",
+              "text-sm font-medium",
             )}
           >
             {isRemote ? (

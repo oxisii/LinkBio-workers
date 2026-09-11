@@ -217,7 +217,7 @@ export async function addLinkAction(formData: FormData) {
     maxOrder + 1,
   );
   if (!item.url) {
-    await flashRedirect("/admin/links", flashErr(t("admin.links.invalidUrl")));
+    await flashRedirect("/admin/links/new", flashErr(t("admin.links.invalidUrl")));
   }
   links.push(item);
   await store.setLinks(links);
@@ -259,7 +259,7 @@ export async function updateLinkAction(formData: FormData) {
   next.order = prev.order;
   if (!next.url) {
     await flashRedirect(
-      `/admin/links?edit=${encodeURIComponent(id)}`,
+      `/admin/links/${encodeURIComponent(id)}`,
       flashErr(t("admin.links.invalidUrl")),
     );
   }

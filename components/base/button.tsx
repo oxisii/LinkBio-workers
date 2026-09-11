@@ -17,9 +17,9 @@ const variantClass: Record<ButtonVariant, string> = {
 };
 
 const sizeClass: Record<ButtonSize, string> = {
-  sm: "h-8 gap-1.5 px-2.5 text-sm",
-  md: "h-10 gap-2 px-3.5 text-sm",
-  lg: "h-11 gap-2 px-4 text-base",
+  sm: "h-9 min-h-9 gap-1.5 px-2.5 text-sm",
+  md: "h-10 min-h-10 gap-2 px-3.5 text-sm",
+  lg: "h-11 min-h-11 gap-2 px-4 text-base",
 };
 
 export function buttonClassName({
@@ -33,7 +33,7 @@ export function buttonClassName({
 } = {}) {
   return cn(
     "inline-flex items-center justify-center rounded-[var(--admin-radius-control)] font-medium",
-    "transition-colors select-none",
+    "transition-colors select-none motion-reduce:transition-none",
     "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-admin-focus",
     "disabled:pointer-events-none disabled:opacity-50",
     "[&[data-disabled]]:pointer-events-none [&[data-disabled]]:opacity-50",

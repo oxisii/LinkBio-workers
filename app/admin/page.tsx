@@ -1,85 +1,62 @@
 import { redirect } from "next/navigation";
-import { LinkButton } from "@/components/base/button";
-import { AdminNav } from "@/components/admin/nav";
-import { AdminPanel } from "@/components/admin/panel";
+import { AdminPageHeader } from "@/components/admin/app-shell";
 import { isAdminSession } from "@/lib/auth";
 import { getAdminUi } from "@/lib/admin-ui";
-import { getCsrfToken } from "@/lib/csrf";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminOverviewPage() {
   if (!(await isAdminSession())) redirect("/admin/login");
-  const { store, siteName, t } = await getAdminUi();
+  const { store, t } = await getAdminUi();
   const [profile, links, analytics] = await Promise.all([
     store.getProfile(),
     store.getLinks(),
     store.getAnalytics(),
   ]);
-  const csrf = await getCsrfToken();
   const clicks = Object.values(analytics.linkClicks).reduce((a, b) => a + b, 0);
+  const enabled = links.filter((l) => l.enabled).length;
 
   return (
-    <div className="admin-shell">
-      <AdminNav active="overview" siteName={siteName} csrf={csrf} t={t} />
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-admin-strong">
-          {t("admin.page.overview")}
-        </h1>
-        <p className="text-sm text-admin-muted">{t("admin.subtitle")}</p>
-      </header>
+    <>
+      <AdminPageHeader title={t("admin.page.overview")} description={t("admin.overview.subtitle")} />
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-3">
-        <AdminPanel>
-          <p className="text-sm font-medium text-admin-muted">{t("admin.stats.pageViews")}</p>
-          <p className="mt-1 text-3xl font-semibold text-admin-strong">{analytics.pageViews}</p>
-        </AdminPanel>
-        <AdminPanel>
-          <p className="text-sm font-medium text-admin-muted">{t("admin.stats.linkClicks")}</p>
-          <p className="mt-1 text-3xl font-semibold text-admin-strong">{clicks}</p>
-        </AdminPanel>
-        <AdminPanel>
-          <p className="text-sm font-medium text-admin-muted">{t("admin.stats.lastUpdated")}</p>
-          <p className="mt-1 text-sm font-medium text-admin-text">
+      <div className="admin-kpi-grid">
+        <div className="admin-kpi">
+          <p className="text-sm text-admin-muted">{t("admin.stats.pageViews")}</p>
+          <p className="mt-1 text-3xl font-semibold tracking-tight text-admin-strong">
+            {analytics.pageViews}
+          </p>
+        </div>
+        <div className="admin-kpi">
+          <p className="text-sm text-admin-muted">{t("admin.stats.linkClicks")}</p>
+          <p className="mt-1 text-3xl font-semibold tracking-tight text-admin-strong">{clicks}</p>
+        </div>
+        <div className="admin-kpi">
+          <p className="text-sm text-admin-muted">{t("admin.stats.lastUpdated")}</p>
+          <p className="mt-2 text-sm font-medium text-admin-text">
             {analytics.lastUpdated || t("admin.stats.empty")}
           </p>
-        </AdminPanel>
+        </div>
       </div>
 
-      <AdminPanel title={t("admin.overview.quickLinks")} className="mb-6">
-        <div className="flex flex-wrap gap-2">
-          <LinkButton href="/admin/profile" variant="secondary" size="sm">
-            {t("admin.overview.editProfile")}
-          </LinkButton>
-          <LinkButton href="/admin/links" variant="secondary" size="sm">
-            {t("admin.overview.manageLinks")}
-          </LinkButton>
-          <LinkButton href="/admin/theme" variant="secondary" size="sm">
-            {t("admin.overview.theme")}
-          </LinkButton>
-          <LinkButton href="/admin/data" variant="secondary" size="sm">
-            {t("admin.overview.data")}
-          </LinkButton>
-          <LinkButton href="/" target="_blank" rel="noopener noreferrer" variant="secondary" size="sm">
-            {t("admin.overview.viewPublic")}
-          </LinkButton>
+      <section className="admin-list">
+        <div className="admin-list-row">
+          <div className="min-w-0 flex-1">
+            <p className="font-medium text-admin-strong">{profile.name || t("admin.stats.empty")}</p>
+            <p className="truncate text-sm text-admin-muted">
+              {profile.username ? `@${profile.username}` : t("admin.overview.currentProfile")}
+              {" · "}
+              {t("admin.overview.enabledLinks", { count: enabled })}
+            </p>
+          </div>
         </div>
-      </AdminPanel>
-
-      <AdminPanel title={t("admin.overview.currentProfile")}>
-        <div className="space-y-2 text-sm">
-          <p className="text-admin-text">
-            <strong className="text-admin-strong">{profile.name}</strong>
-            {profile.username ? ` · @${profile.username}` : ""}
-          </p>
-          <p className="text-admin-muted">{profile.bio || t("admin.stats.empty")}</p>
-          <p className="text-admin-muted">
-            {t("admin.overview.enabledLinks", {
-              count: links.filter((l) => l.enabled).length,
-            })}
-          </p>
-        </div>
-      </AdminPanel>
-    </div>
+        {profile.bio ? (
+          <div className="admin-list-row">
+            <p className="text-sm text-admin-muted">{profile.bio}</p>
+          </div>
+        ) : null}
+      </section>
+      <p className="mt-3 text-xs text-admin-muted">{t("admin.stats.hint")}</p>
+    </>
   );
 }

@@ -1,275 +1,103 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Badge } from "@/components/base/badge";
-import { Button, LinkButton } from "@/components/base/button";
-import { Input } from "@/components/base/field";
-import { SubmitButton } from "@/components/base/submit-button";
-import {
-  addLinkAction,
-  deleteLinkAction,
-  reorderLinkAction,
-  toggleLinkAction,
-  updateLinkAction,
-} from "../actions";
-import { ConfirmSubmitButton } from "@/components/admin/confirm-submit";
-import { AdminNav } from "@/components/admin/nav";
+import { LinkButton } from "@/components/base/button";
+import { LinkRowActions } from "@/components/admin/link-row-actions";
+import { AdminPageHeader } from "@/components/admin/app-shell";
 import { Flash } from "@/components/admin/flash";
-import { IconSelect } from "@/components/admin/icon-select";
-import { AdminPanel } from "@/components/admin/panel";
 import { isAdminSession } from "@/lib/auth";
 import { getAdminUi } from "@/lib/admin-ui";
 import { getCsrfToken } from "@/lib/csrf";
 import { resolveAdminFlash } from "@/lib/flash";
 import { resolveLinkIconSrc } from "@/lib/icons";
-import { CSRF_FIELD } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
 export default async function LinksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ msg?: string; edit?: string }>;
+  searchParams: Promise<{ msg?: string }>;
 }) {
   if (!(await isAdminSession())) redirect("/admin/login");
-  const { store, siteName, t } = await getAdminUi();
+  const { store, t } = await getAdminUi();
   const links = await store.getLinks();
   const csrf = await getCsrfToken();
   const sp = await searchParams;
   const flash = await resolveAdminFlash(sp.msg);
-  const editId = (sp.edit || "").trim();
   const sorted = [...links].sort((a, b) => a.order - b.order);
-  const editing = editId ? sorted.find((l) => l.id === editId) : undefined;
+
+  const rowLabels = {
+    more: t("admin.links.more"),
+    edit: t("admin.links.edit"),
+    enable: t("admin.links.enable"),
+    disable: t("admin.links.disable"),
+    moveUp: t("admin.links.moveUp"),
+    moveDown: t("admin.links.moveDown"),
+    delete: t("admin.links.delete"),
+    deleteConfirm: t("admin.links.deleteConfirm"),
+    confirm: t("admin.common.confirm"),
+    cancel: t("admin.common.cancel"),
+  };
 
   return (
-    <div className="admin-shell">
-      <AdminNav active="links" siteName={siteName} csrf={csrf} t={t} />
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-admin-strong">
-          {t("admin.page.links")}
-        </h1>
-        <p className="text-sm text-admin-muted">{t("admin.subtitle")}</p>
-      </header>
-      <AdminPanel title={t("admin.links.title")} className="mb-6">
-          <div className="space-y-3">
-            <Flash message={flash} />
-            {sorted.length === 0 ? (
-              <p className="text-sm text-admin-muted">{t("admin.links.empty")}</p>
-            ) : (
-              sorted.map((l) => {
-                const isEditing = editing?.id === l.id;
-                const iconSrc = resolveLinkIconSrc(l.icon);
-                return (
-                  <div
-                    key={l.id}
-                    className="rounded-xl border border-admin-border bg-admin-surface p-3"
-                  >
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex min-w-0 items-start gap-3">
-                        <span
-                          aria-hidden
-                          className="mt-0.5 inline-block size-8 shrink-0 rounded-md border border-admin-border bg-admin-control"
-                          style={{
-                            maskImage: `url(${iconSrc})`,
-                            WebkitMaskImage: `url(${iconSrc})`,
-                            maskSize: "1.25rem",
-                            WebkitMaskSize: "1.25rem",
-                            maskRepeat: "no-repeat",
-                            WebkitMaskRepeat: "no-repeat",
-                            maskPosition: "center",
-                            WebkitMaskPosition: "center",
-                            backgroundColor: "var(--admin-text)",
-                          }}
-                        />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 font-medium text-admin-text">
-                            <span className="truncate">{l.title}</span>
-                            <Badge variant={l.enabled ? "success" : "neutral"}>
-                              {l.enabled ? t("admin.links.badgeOn") : t("admin.links.badgeOff")}
-                            </Badge>
-                          </div>
-                          <p className="truncate text-xs text-admin-muted">
-                            {t("admin.links.meta", {
-                              url: l.url,
-                              icon: l.icon,
-                              order: l.order,
-                            })}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {isEditing ? (
-                          <LinkButton href="/admin/links" variant="secondary" size="sm">
-                            {t("admin.links.cancelEdit")}
-                          </LinkButton>
-                        ) : (
-                          <LinkButton
-                            href={`/admin/links?edit=${encodeURIComponent(l.id)}`}
-                            variant="secondary"
-                            size="sm"
-                          >
-                            {t("admin.links.edit")}
-                          </LinkButton>
-                        )}
-                        <form action={toggleLinkAction}>
-                          <input type="hidden" name={CSRF_FIELD} value={csrf} />
-                          <input type="hidden" name="id" value={l.id} />
-                          <Button type="submit" size="sm" variant="secondary">
-                            {l.enabled ? t("admin.links.disable") : t("admin.links.enable")}
-                          </Button>
-                        </form>
-                        <form action={reorderLinkAction}>
-                          <input type="hidden" name={CSRF_FIELD} value={csrf} />
-                          <input type="hidden" name="id" value={l.id} />
-                          <input type="hidden" name="dir" value={-1} />
-                          <Button
-                            type="submit"
-                            size="sm"
-                            variant="secondary"
-                            aria-label={t("admin.links.moveUp")}
-                            title={t("admin.links.moveUp")}
-                          >
-                            ↑
-                          </Button>
-                        </form>
-                        <form action={reorderLinkAction}>
-                          <input type="hidden" name={CSRF_FIELD} value={csrf} />
-                          <input type="hidden" name="id" value={l.id} />
-                          <input type="hidden" name="dir" value={1} />
-                          <Button
-                            type="submit"
-                            size="sm"
-                            variant="secondary"
-                            aria-label={t("admin.links.moveDown")}
-                            title={t("admin.links.moveDown")}
-                          >
-                            ↓
-                          </Button>
-                        </form>
-                        <form action={deleteLinkAction}>
-                          <input type="hidden" name={CSRF_FIELD} value={csrf} />
-                          <input type="hidden" name="id" value={l.id} />
-                          <ConfirmSubmitButton
-                            size="sm"
-                            variant="destructive"
-                            confirmMessage={t("admin.links.deleteConfirm")}
-                            confirmLabel={t("admin.links.delete")}
-                            cancelLabel={t("admin.common.cancel")}
-                          >
-                            {t("admin.links.delete")}
-                          </ConfirmSubmitButton>
-                        </form>
-                      </div>
-                    </div>
-
-                    {isEditing ? (
-                      <form
-                        action={updateLinkAction}
-                        className="mt-4 space-y-4 border-t border-admin-border pt-4"
-                      >
-                        <input type="hidden" name={CSRF_FIELD} value={csrf} />
-                        <input type="hidden" name="id" value={l.id} />
-                        <div className="grid gap-4 sm:grid-cols-2">
-                          <Input
-                            id={`edit-title-${l.id}`}
-                            name="title"
-                            label={t("admin.links.fieldTitle")}
-                            defaultValue={l.title}
-                            required
-                            maxLength={80}
-                          />
-                          <IconSelect
-                            id={`edit-icon-${l.id}`}
-                            name="icon"
-                            label={t("admin.links.icon")}
-                            defaultValue={l.icon}
-                            customLabelTemplate={t("admin.links.icon.custom")}
-                          />
-                        </div>
-                        <Input
-                          id={`edit-url-${l.id}`}
-                          name="url"
-                          type="url"
-                          label={t("admin.links.url")}
-                          defaultValue={l.url}
-                          required
-                          maxLength={2000}
-                          placeholder={t("admin.links.urlPlaceholder")}
-                        />
-                        <label className="flex items-center gap-2 text-sm text-admin-text">
-                          <input
-                            type="checkbox"
-                            name="enabled"
-                            value="1"
-                            defaultChecked={l.enabled}
-                            className="size-4"
-                          />
-                          {t("admin.links.enabled")}
-                        </label>
-                        <div className="flex flex-wrap gap-2">
-                          <Button type="submit" variant="primary" size="sm">
-                            {t("admin.links.saveEdit")}
-                          </Button>
-                          <LinkButton href="/admin/links" variant="secondary" size="sm">
-                            {t("admin.links.cancelEdit")}
-                          </LinkButton>
-                        </div>
-                      </form>
-                    ) : null}
-                  </div>
-                );
-              })
-            )}
+    <>
+      <AdminPageHeader
+        title={t("admin.page.links")}
+        description={t("admin.links.subtitle")}
+        actions={
+          <LinkButton href="/admin/links/new" variant="primary" size="sm">
+            {t("admin.links.add")}
+          </LinkButton>
+        }
+      />
+      <Flash message={flash} />
+      {sorted.length === 0 ? (
+        <section className="admin-list">
+          <div className="flex flex-col items-center gap-3 px-4 py-12 text-center">
+            <p className="text-sm text-admin-muted">{t("admin.links.empty")}</p>
+            <LinkButton href="/admin/links/new" variant="primary" size="sm">
+              {t("admin.links.add")}
+            </LinkButton>
           </div>
-      </AdminPanel>
-
-      {editId && !editing ? (
-        <p className="mb-4 text-sm text-admin-muted">
-          {t("admin.links.notFound")}{" "}
-          <Link href="/admin/links" className="text-admin-link underline">
-            {t("admin.links.cancelEdit")}
-          </Link>
-        </p>
-      ) : null}
-
-      <AdminPanel title={t("admin.links.add")}>
-          <form action={addLinkAction} className="space-y-4">
-            <input type="hidden" name={CSRF_FIELD} value={csrf} />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input
-                id="title"
-                name="title"
-                label={t("admin.links.fieldTitle")}
-                required
-                maxLength={80}
-              />
-              <IconSelect
-                id="icon"
-                name="icon"
-                label={t("admin.links.icon")}
-                defaultValue="link"
-                customLabelTemplate={t("admin.links.icon.custom")}
-              />
-            </div>
-            <Input
-              id="url"
-              name="url"
-              type="url"
-              label={t("admin.links.url")}
-              required
-              maxLength={2000}
-              placeholder={t("admin.links.urlPlaceholder")}
-            />
-            <label className="flex items-center gap-2 text-sm text-admin-text">
-              <input type="checkbox" name="enabled" value="1" defaultChecked className="size-4" />
-              {t("admin.links.enabled")}
-            </label>
-            <div className="border-t border-admin-border pt-4">
-              <Button type="submit" variant="primary">
-                {t("admin.links.submit")}
-              </Button>
-            </div>
-          </form>
-      </AdminPanel>
-    </div>
+        </section>
+      ) : (
+        <section className="admin-list">
+          {sorted.map((l, i) => {
+            const iconSrc = resolveLinkIconSrc(l.icon);
+            return (
+              <div key={l.id} className="admin-list-row">
+                <span
+                  aria-hidden
+                  className="inline-block size-8 shrink-0 rounded-md bg-admin-text"
+                  style={{
+                    maskImage: `url(${iconSrc})`,
+                    WebkitMaskImage: `url(${iconSrc})`,
+                    maskSize: "1.15rem",
+                    WebkitMaskSize: "1.15rem",
+                    maskRepeat: "no-repeat",
+                    WebkitMaskRepeat: "no-repeat",
+                    maskPosition: "center",
+                    WebkitMaskPosition: "center",
+                  }}
+                />
+                <Link href={`/admin/links/${l.id}`} className="min-w-0 flex-1 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-admin-focus">
+                  <p className="truncate font-medium text-admin-strong">
+                    {l.title || t("admin.stats.empty")}
+                  </p>
+                  <p className="truncate text-sm text-admin-muted">{l.url}</p>
+                </Link>
+                <LinkRowActions
+                  id={l.id}
+                  enabled={l.enabled}
+                  isFirst={i === 0}
+                  isLast={i === sorted.length - 1}
+                  csrf={csrf}
+                  labels={rowLabels}
+                />
+              </div>
+            );
+          })}
+        </section>
+      )}
+    </>
   );
 }

@@ -10,7 +10,7 @@ export function ProfileCard({ profile }: { profile: Profile }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={profile.avatar}
-            alt=""
+            alt={profile.name || ""}
             className="theme-avatar h-24 w-24 rounded-full border-2 border-border object-cover shadow-xl"
           />
         ) : (
@@ -38,7 +38,7 @@ export function ProfileCard({ profile }: { profile: Profile }) {
       <div className="theme-meta flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
         {profile.location ? <span>{profile.location}</span> : null}
         {profile.email ? (
-          <a className="hover:text-foreground" href={`mailto:${profile.email}`}>
+          <a className="rounded-sm underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" href={`mailto:${profile.email}`}>
             {profile.email}
           </a>
         ) : null}

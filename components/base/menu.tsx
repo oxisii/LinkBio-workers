@@ -19,6 +19,7 @@ export function MenuPopup({ className, ...props }: React.ComponentProps<typeof M
         "bg-admin-elevated p-1 text-admin-text shadow-lg ring-1 ring-admin-line",
         "transition-[transform,opacity] data-ending-style:scale-95 data-ending-style:opacity-0",
         "data-starting-style:scale-95 data-starting-style:opacity-0",
+        "motion-reduce:transition-none",
         className,
       )}
       {...props}

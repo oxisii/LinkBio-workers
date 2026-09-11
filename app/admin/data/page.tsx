@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Button, LinkButton } from "@/components/base/button";
 import { Input, InputArea } from "@/components/base/field";
 import { SubmitButton } from "@/components/base/submit-button";
+import { SwitchField } from "@/components/base/switch";
 import { ConfirmSubmitButton } from "@/components/admin/confirm-submit";
 import {
   importDataAction,
@@ -10,9 +11,8 @@ import {
   runBackupNowAction,
   saveBackupConfigAction,
 } from "../actions";
-import { AdminNav } from "@/components/admin/nav";
+import { AdminPageHeader, AdminSection } from "@/components/admin/app-shell";
 import { Flash } from "@/components/admin/flash";
-import { AdminPanel } from "@/components/admin/panel";
 import { isAdminSession } from "@/lib/auth";
 import { getAdminUi } from "@/lib/admin-ui";
 import {
@@ -32,7 +32,7 @@ export default async function DataPage({
   searchParams: Promise<{ msg?: string }>;
 }) {
   if (!(await isAdminSession())) redirect("/admin/login");
-  const { store, siteName, t } = await getAdminUi();
+  const { store, t } = await getAdminUi();
   const [backup, state] = await Promise.all([store.getBackupConfig(), store.getBackupState()]);
   const csrf = await getCsrfToken();
   const sp = await searchParams;
@@ -64,19 +64,12 @@ export default async function DataPage({
     : t("admin.backup.statusNone");
 
   return (
-    <div className="admin-shell">
-      <AdminNav active="data" siteName={siteName} csrf={csrf} t={t} />
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-admin-strong">
-          {t("admin.page.data")}
-        </h1>
-        <p className="text-sm text-admin-muted">{t("admin.subtitle")}</p>
-      </header>
+    <>
+      <AdminPageHeader title={t("admin.page.data")} description={t("admin.data.subtitle")} />
+      <Flash message={flash} />
 
-      <AdminPanel title={t("admin.data.title")} className="mb-6">
+      <AdminSection className="mb-6" title={t("admin.data.title")} description={t("admin.data.hint")}>
         <div className="space-y-4">
-          <Flash message={flash} />
-          <p className="text-sm text-admin-muted">{t("admin.data.hint")}</p>
           <LinkButton href="/api/admin/export" variant="secondary">
             {t("admin.data.export")}
           </LinkButton>
@@ -103,39 +96,26 @@ export default async function DataPage({
             </ConfirmSubmitButton>
           </form>
         </div>
-      </AdminPanel>
+      </AdminSection>
 
-      <AdminPanel title={t("admin.backup.title")} className="mb-6">
+      <AdminSection
+        className="mb-6"
+        title={t("admin.backup.title")}
+        description={t("admin.backup.hint")}
+      >
         <div className="space-y-4">
-          <p className="text-sm text-admin-muted">{t("admin.backup.hint")}</p>
-          <p className="rounded-lg border border-admin-border bg-admin-tint px-3 py-2 text-xs text-admin-text">
-            {statusLine}
-          </p>
+          <p className="rounded-lg bg-admin-tint px-3 py-2 text-xs text-admin-text">{statusLine}</p>
 
           <form action={saveBackupConfigAction} className="space-y-5">
             <input type="hidden" name={CSRF_FIELD} value={csrf} />
 
             <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm text-admin-text">
-                <input
-                  type="checkbox"
-                  name="autoBackup"
-                  value="1"
-                  defaultChecked={backup.autoBackup}
-                  className="size-4"
-                />
+              <SwitchField name="autoBackup" defaultChecked={backup.autoBackup}>
                 {t("admin.backup.autoBackup")}
-              </label>
-              <label className="flex items-center gap-2 text-sm text-admin-text">
-                <input
-                  type="checkbox"
-                  name="includeAnalytics"
-                  value="1"
-                  defaultChecked={backup.includeAnalytics}
-                  className="size-4"
-                />
+              </SwitchField>
+              <SwitchField name="includeAnalytics" defaultChecked={backup.includeAnalytics}>
                 {t("admin.backup.includeAnalytics")}
-              </label>
+              </SwitchField>
               <Input
                 id="minIntervalSec"
                 name="minIntervalSec"
@@ -148,18 +128,11 @@ export default async function DataPage({
               />
             </div>
 
-            <div className="space-y-3 rounded-xl border border-admin-border p-4">
+            <div className="space-y-3">
               <h3 className="text-sm font-semibold text-admin-strong">{t("admin.backup.webdav")}</h3>
-              <label className="flex items-center gap-2 text-sm text-admin-text">
-                <input
-                  type="checkbox"
-                  name="webdavEnabled"
-                  value="1"
-                  defaultChecked={backup.webdav.enabled}
-                  className="size-4"
-                />
+              <SwitchField name="webdavEnabled" defaultChecked={backup.webdav.enabled}>
                 {t("admin.backup.webdavEnable")}
-              </label>
+              </SwitchField>
               <Input
                 id="webdavUrl"
                 name="webdavUrl"
@@ -193,18 +166,11 @@ export default async function DataPage({
               </div>
             </div>
 
-            <div className="space-y-3 rounded-xl border border-admin-border p-4">
+            <div className="space-y-3">
               <h3 className="text-sm font-semibold text-admin-strong">{t("admin.backup.gist")}</h3>
-              <label className="flex items-center gap-2 text-sm text-admin-text">
-                <input
-                  type="checkbox"
-                  name="gistEnabled"
-                  value="1"
-                  defaultChecked={backup.gist.enabled}
-                  className="size-4"
-                />
+              <SwitchField name="gistEnabled" defaultChecked={backup.gist.enabled}>
                 {t("admin.backup.gistEnable")}
-              </label>
+              </SwitchField>
               <Input
                 id="gistToken"
                 name="gistToken"
@@ -279,7 +245,7 @@ export default async function DataPage({
           </div>
           <p className="text-xs text-admin-muted">{t("admin.backup.restoreWarn")}</p>
         </div>
-      </AdminPanel>
-    </div>
+      </AdminSection>
+    </>
   );
 }

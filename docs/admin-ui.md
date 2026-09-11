@@ -1,26 +1,26 @@
-# Admin UI 重构说明
+# Admin UI
 
-Admin 已从 `@cloudflare/kumo` 切到 **`@base-ui/react` + Tailwind v4**。
+Admin uses **`@base-ui/react` + Tailwind v4**, Cal.com-style shell.
 
-## 分层
+## Layout
 
-- `components/base/`：Base UI 原语封装（Button、Field、Select、Dialog、Menu、Checkbox、Alert）
-- `components/admin/`：业务组件（Nav、Panel、Flash、IconSelect、PrefsToolbar）
-- `app/admin/`：路由与 Server Actions（业务逻辑未改）
+- `components/admin/app-shell.tsx` — sidebar + mobile drawer
+- `AdminPageHeader` / `AdminSection` — page chrome
+- Appearance menu (color + locale) at sidebar bottom; logout is a separate row
 
-前台仍用 `components/ui`（shadcn / Radix），不强行合并。颜色/间距通过 `app/globals.css` 里的 `--admin-*` 与公共 token 对齐。
+## Primitives (`components/base`)
 
-## 硬性约定
+- Button, Field/Input, Select, Switch, Dialog, Menu, Alert, Badge
+- Control height: 40px (`h-10`). Primary = near-black / near-white.
+- Links list: `LinkRowActions` (switch + overflow menu). Edit is a dedicated page.
 
-1. Admin 只引入 `@base-ui/react` 与 `components/base`，不要再加 Radix / Kumo。
-2. 链接看起来像按钮时，用 `LinkButton`（`<a>`），不要把 `Button` 渲染成链接。
-3. `Button` 必须显式写 `type="submit"` 或 `type="button"`。
-4. 所有 POST 表单保留 CSRF hidden field。
-5. 危险操作（删链接、导入、远端恢复）走 `ConfirmSubmitButton`（Dialog，不是 `window.confirm`）。
-6. 图标只用 `lucide-react`。
+## Rules
 
-## 深浅色
+1. Admin only `@base-ui/react` + `components/base` — no Radix / Kumo.
+2. `LinkButton` for links that look like buttons.
+3. `Button` must set `type="submit"` or `type="button"`.
+4. POST forms keep CSRF hidden fields.
+5. Destructive actions use `ConfirmSubmitButton` / `ConfirmDialog`.
+6. Icons: `lucide-react`. Icon-only controls need `aria-label` + `title`.
 
-- 站点：`html[data-theme]`
-- Admin 壳：`[data-admin-root][data-mode]`
-- `--admin-*` 定义在 `:root`，保证 Base UI Portal 也能继承。
+Public site stays on `components/ui` and `src/themes` tokens. Do not restyle public links with Admin tokens.
