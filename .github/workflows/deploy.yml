@@ -2,7 +2,8 @@
 #
 # Secrets: CF_API_TOKEN / CF_ACCOUNT_ID (or CLOUDFLARE_*)
 # Vars/Secrets: BIO_KV_ID (required), BIO_KV_PREVIEW_ID (optional)
-# Worker secrets (Dashboard/CLI): ADMIN_PASSWORD, SESSION_SECRET
+# Worker secrets stay on Cloudflare (CLI/Dashboard): ADMIN_PASSWORD, SESSION_SECRET
+# Do not set npm registry to mirrors.tencentyun.com — GitHub-hosted runners cannot resolve it.
 
 name: Deploy
 
@@ -19,10 +20,14 @@ jobs:
   deploy:
     name: Deploy to Cloudflare Workers
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 20
     permissions:
       contents: read
-
+    env:
+      NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+      NPM_CONFIG_REPLACE_REGISTRY_HOST: never
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,43 +37,35 @@ jobs:
         with:
           node-version: "22"
           cache: npm
+          registry-url: https://registry.npmjs.org
 
-      - name: Install dependencies
-        run: npm ci --legacy-peer-deps
-
-      - name: Build themes + typecheck
-        run: npm run typecheck
-
-      - name: Inject KV namespace IDs into wrangler.toml
-        env:
-          BIO_KV_ID: ${{ vars.BIO_KV_ID || secrets.BIO_KV_ID }}
-          BIO_KV_PREVIEW_ID: ${{ vars.BIO_KV_PREVIEW_ID || secrets.BIO_KV_PREVIEW_ID || vars.BIO_KV_ID || secrets.BIO_KV_ID }}
+      - name: Guard registry
         run: |
-          set -euo pipefail
-          if [ -z "${BIO_KV_ID:-}" ] || [ "$BIO_KV_ID" = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID" ]; then
-            echo "::error::BIO_KV_ID is required."
+          echo "registry=$(npm config get registry)"
+          if npm config get registry | grep -Eqi 'tencentyun|tencentcloud'; then
+            echo "Refusing Tencent internal npm mirror in CI"
             exit 1
           fi
-          export BIO_KV_PREVIEW_ID="${BIO_KV_PREVIEW_ID:-$BIO_KV_ID}"
-          node -e '
-            const fs = require("fs");
-            const id = process.env.BIO_KV_ID;
-            const preview = process.env.BIO_KV_PREVIEW_ID || id;
-            let toml = fs.readFileSync("wrangler.toml", "utf8");
-            toml = toml
-              .split("REPLACE_WITH_YOUR_KV_NAMESPACE_ID").join(id)
-              .split("REPLACE_WITH_YOUR_KV_PREVIEW_ID").join(preview);
-            if (toml.includes("REPLACE_WITH_YOUR_KV_")) process.exit(1);
-            fs.writeFileSync("wrangler.toml", toml);
-            console.log("Injected BIO_KV_ID");
-          '
 
-      - name: Build OpenNext worker
-        run: npx opennextjs-cloudflare build
+      - name: Install
+        run: npm ci --legacy-peer-deps
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Inject KV ids
+        env:
+          BIO_KV_ID: ${{ vars.BIO_KV_ID || secrets.BIO_KV_ID }}
+          BIO_KV_PREVIEW_ID: ${{ vars.BIO_KV_PREVIEW_ID || secrets.BIO_KV_PREVIEW_ID }}
+        run: |
+          set -euo pipefail
+          test -n "${BIO_KV_ID:-}" || { echo "BIO_KV_ID missing"; exit 1; }
+          PREVIEW="${BIO_KV_PREVIEW_ID:-$BIO_KV_ID}"
+          sed -i "s/REPLACE_WITH_YOUR_KV_NAMESPACE_ID/${BIO_KV_ID}/" wrangler.toml
+          sed -i "s/REPLACE_WITH_YOUR_KV_PREVIEW_ID/${PREVIEW}/" wrangler.toml
+
+      - name: Build worker
+        run: npm run build:worker
 
       - name: Deploy
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CF_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
+        run: npx wrangler deploy
