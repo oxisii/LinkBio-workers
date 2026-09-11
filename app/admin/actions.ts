@@ -12,6 +12,7 @@ import {
 } from "@/lib/backup";
 import { getAdminUi } from "@/lib/admin-ui";
 import { translateBackupError } from "@/lib/backup-i18n";
+import { isAdminSession } from "@/lib/auth";
 import { getEnv, getStore } from "@/lib/env";
 import { flashErr, flashOk, setFlashCookie } from "@/lib/flash";
 import { createT } from "@/lib/i18n";
@@ -68,6 +69,15 @@ async function requireCsrf(formData: FormData) {
     return false;
   }
   return true;
+}
+
+/** Session + CSRF for mutating admin actions. Login/logout skip this. */
+async function requireWrite(formData: FormData, failPath: string): Promise<void> {
+  if (!(await isAdminSession())) redirect("/admin/login");
+  const t = await tSite();
+  if (!(await requireCsrf(formData))) {
+    await flashRedirect(failPath, flashErr(t("admin.error.csrf")));
+  }
 }
 
 async function isSecure() {
@@ -128,6 +138,7 @@ export async function loginAction(formData: FormData) {
   });
   jar.set(CSRF_COOKIE, generateCsrfToken(), {
     path: "/",
+    httpOnly: true,
     sameSite: "lax",
     maxAge: 86400,
     secure: sec,
@@ -151,10 +162,8 @@ export async function logoutAction(formData: FormData) {
 }
 
 export async function saveProfileAction(formData: FormData) {
+  await requireWrite(formData, "/admin/profile");
   const t = await tSite();
-  if (!(await requireCsrf(formData))) {
-    await flashRedirect("/admin/profile", flashErr(t("admin.error.csrf")));
-  }
   const store = await getStore();
   await store.setProfile(
     sanitizeProfile({
@@ -172,10 +181,8 @@ export async function saveProfileAction(formData: FormData) {
 }
 
 export async function saveSettingsAction(formData: FormData) {
+  await requireWrite(formData, "/admin/theme");
   const t = await tSite();
-  if (!(await requireCsrf(formData))) {
-    await flashRedirect("/admin/theme", flashErr(t("admin.error.csrf")));
-  }
   const store = await getStore();
   const env = await getEnv();
   const next = sanitizeSettings({
@@ -198,10 +205,8 @@ export async function saveSettingsAction(formData: FormData) {
 }
 
 export async function addLinkAction(formData: FormData) {
+  await requireWrite(formData, "/admin/links");
   const t = await tSite();
-  if (!(await requireCsrf(formData))) {
-    await flashRedirect("/admin/links", flashErr(t("admin.error.csrf")));
-  }
   const store = await getStore();
   const links = await store.getLinks();
   const maxOrder = links.reduce((m, l) => Math.max(m, l.order), -1);
@@ -228,10 +233,8 @@ export async function addLinkAction(formData: FormData) {
 
 /** Update title/url/icon/enabled by id; keep order and id unchanged. */
 export async function updateLinkAction(formData: FormData) {
+  await requireWrite(formData, "/admin/links");
   const t = await tSite();
-  if (!(await requireCsrf(formData))) {
-    await flashRedirect("/admin/links", flashErr(t("admin.error.csrf")));
-  }
   const id = String(formData.get("id") || "").trim();
   if (!id) {
     await flashRedirect("/admin/links", flashErr(t("admin.links.notFound")));
@@ -271,10 +274,8 @@ export async function updateLinkAction(formData: FormData) {
 }
 
 export async function deleteLinkAction(formData: FormData) {
+  await requireWrite(formData, "/admin/links");
   const t = await tSite();
-  if (!(await requireCsrf(formData))) {
-    await flashRedirect("/admin/links", flashErr(t("admin.error.csrf")));
-  }
   const id = String(formData.get("id") || "");
   const store = await getStore();
   const links = (await store.getLinks()).filter((l) => l.id !== id);
@@ -285,10 +286,8 @@ export async function deleteLinkAction(formData: FormData) {
 }
 
 export async function toggleLinkAction(formData: FormData) {
+  await requireWrite(formData, "/admin/links");
   const t = await tSite();
-  if (!(await requireCsrf(formData))) {
-    await flashRedirect("/admin/links", flashErr(t("admin.error.csrf")));
-  }
   const id = String(formData.get("id") || "");
   const store = await getStore();
   const links = await store.getLinks();
@@ -299,10 +298,8 @@ export async function toggleLinkAction(formData: FormData) {
 }
 
 export async function reorderLinkAction(formData: FormData) {
+  await requireWrite(formData, "/admin/links");
   const t = await tSite();
-  if (!(await requireCsrf(formData))) {
-    await flashRedirect("/admin/links", flashErr(t("admin.error.csrf")));
-  }
   const id = String(formData.get("id") || "");
   const dir = Number(formData.get("dir") || 0) as -1 | 1;
   const store = await getStore();
@@ -322,10 +319,8 @@ export async function reorderLinkAction(formData: FormData) {
 }
 
 export async function importDataAction(formData: FormData) {
+  await requireWrite(formData, "/admin/data");
   const t = await tSite();
-  if (!(await requireCsrf(formData))) {
-    await flashRedirect("/admin/data", flashErr(t("admin.error.csrf")));
-  }
   const raw = String(formData.get("json") || "");
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
@@ -347,10 +342,8 @@ export async function importDataAction(formData: FormData) {
 }
 
 export async function saveBackupConfigAction(formData: FormData) {
+  await requireWrite(formData, "/admin/data");
   const t = await tSite();
-  if (!(await requireCsrf(formData))) {
-    await flashRedirect("/admin/data", flashErr(t("admin.error.csrf")));
-  }
   const store = await getStore();
   const next = backupConfigFromForm(formData);
   // Preserve password/token if form left blank (browser may not re-send secrets)
@@ -366,10 +359,8 @@ export async function saveBackupConfigAction(formData: FormData) {
 }
 
 export async function runBackupNowAction(formData: FormData) {
+  await requireWrite(formData, "/admin/data");
   const t = await tSite();
-  if (!(await requireCsrf(formData))) {
-    await flashRedirect("/admin/data", flashErr(t("admin.error.csrf")));
-  }
   const store = await getStore();
   const result = await runBackup(store, { source: "manual", force: true });
   if (result.ok) {
@@ -392,10 +383,8 @@ export async function runBackupNowAction(formData: FormData) {
 }
 
 export async function restoreWebDavAction(formData: FormData) {
+  await requireWrite(formData, "/admin/data");
   const t = await tSite();
-  if (!(await requireCsrf(formData))) {
-    await flashRedirect("/admin/data", flashErr(t("admin.error.csrf")));
-  }
   const store = await getStore();
   const result = await restoreFromWebDav(store);
   if (result.ok) {
@@ -409,10 +398,8 @@ export async function restoreWebDavAction(formData: FormData) {
 }
 
 export async function restoreGistAction(formData: FormData) {
+  await requireWrite(formData, "/admin/data");
   const t = await tSite();
-  if (!(await requireCsrf(formData))) {
-    await flashRedirect("/admin/data", flashErr(t("admin.error.csrf")));
-  }
   const store = await getStore();
   const result = await restoreFromGist(store);
   if (result.ok) {

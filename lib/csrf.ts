@@ -1,5 +1,5 @@
 import { cookies, headers } from "next/headers";
-import { CSRF_COOKIE, CSRF_HEADER, generateCsrfToken } from "@/lib/security";
+import { CSRF_COOKIE, CSRF_HEADER } from "@/lib/security";
 
 /**
  * Read CSRF token for admin forms (RSC-safe: never cookies().set).
@@ -14,6 +14,5 @@ export async function getCsrfToken(): Promise<string> {
   const fromHeader = h.get(CSRF_HEADER);
   if (fromHeader && fromHeader.length >= 16) return fromHeader;
 
-  // Should be rare (middleware matcher miss). Form may fail CSRF until refresh.
-  return generateCsrfToken();
+  return "";
 }

@@ -5,7 +5,7 @@ import { LinkList } from "@/components/public/link-list";
 import { SiteFooter } from "@/components/public/site-footer";
 import { ThemeToolbar } from "@/components/public/theme-toolbar";
 import { isAdminSession } from "@/lib/auth";
-import { getEnv, getStore } from "@/lib/env";
+import { getEnv, getStore, waitUntil } from "@/lib/env";
 import { createT, htmlLang } from "@/lib/i18n";
 import { resolveColorMode, resolveLocale } from "@/lib/prefs";
 import { getTheme, resolveThemeId } from "@/lib/themes";
@@ -70,7 +70,7 @@ export default async function PublicPage() {
     store.getSettings(),
   ]);
 
-  void store.incrementPageViews();
+  await waitUntil(store.incrementPageViews());
 
   const jar = await cookies();
   const hdrs = await headers();

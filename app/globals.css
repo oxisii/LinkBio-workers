@@ -273,15 +273,22 @@
 
 .admin-app {
   display: flex;
+  align-items: flex-start;
   min-height: 100vh;
   min-height: 100dvh;
 }
 
 .admin-sidebar {
   box-sizing: border-box;
+  position: sticky;
+  top: 0;
   display: flex;
   width: 16rem;
+  flex-shrink: 0;
   flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   background: var(--admin-bg);
   border-right: 1px solid var(--admin-line);
   padding:
@@ -309,13 +316,16 @@
 
 .admin-sidebar-nav {
   display: flex;
-  flex: 1;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 0.15rem;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .admin-sidebar-foot {
   display: flex;
+  flex-shrink: 0;
   flex-direction: column;
   gap: 0.15rem;
   padding-top: 0.75rem;
@@ -352,7 +362,6 @@
 
 .admin-icon-btn {
   display: inline-flex;
-  size: 2.25rem;
   width: 2.25rem;
   height: 2.25rem;
   align-items: center;
@@ -562,6 +571,7 @@
 
   .admin-mobile-bar {
     display: flex;
+    flex-shrink: 0;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;

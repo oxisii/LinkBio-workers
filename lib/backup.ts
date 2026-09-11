@@ -343,6 +343,7 @@ export async function buildBackupPayload(
   return store.exportBackup({
     includeAnalytics: config.includeAnalytics,
     includeBackupConfig: true,
+    includeBackupSecrets: false,
   });
 }
 
@@ -355,12 +356,24 @@ export async function runBackup(
   options?: { source?: "auto" | "manual"; force?: boolean },
 ): Promise<BackupRunResult> {
   const source = options?.source || "manual";
+  const force = options?.force === true;
   const config = await store.getBackupConfig();
   const enabled: Array<"webdav" | "gist"> = [];
   if (config.webdav.enabled) enabled.push("webdav");
   if (config.gist.enabled) enabled.push("gist");
 
   const now = new Date().toISOString();
+
+  if (!force) {
+    const state = await store.getBackupState();
+    const minSec = Math.max(60, config.minIntervalSec || 300);
+    if (state.lastAttemptAt) {
+      const elapsed = (Date.now() - Date.parse(state.lastAttemptAt)) / 1000;
+      if (Number.isFinite(elapsed) && elapsed < minSec) {
+        return { ok: false, results: [], error: state.lastError, exportedAt: now };
+      }
+    }
+  }
 
   if (!enabled.length) {
     const state: BackupState = {

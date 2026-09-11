@@ -34,7 +34,10 @@ export function LinkList({
             data-link-id={link.id}
             onClick={() => {
               try {
-                navigator.sendBeacon("/api/click", JSON.stringify({ id: link.id }));
+                navigator.sendBeacon(
+                  "/api/click",
+                  new Blob([JSON.stringify({ id: link.id })], { type: "application/json" }),
+                );
               } catch {
                 void fetch("/api/click", {
                   method: "POST",

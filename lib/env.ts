@@ -33,6 +33,22 @@ export async function getStore(): Promise<BioStore> {
   return new Store(env.BIO_KV);
 }
 
+/** Keep background work alive after the Worker response (KV increment, backup). */
+export async function waitUntil(task: Promise<unknown>): Promise<void> {
+  try {
+    const { getCloudflareContext } = await import("@opennextjs/cloudflare");
+    const cf = await getCloudflareContext({ async: true });
+    const wu = cf?.ctx?.waitUntil?.bind(cf.ctx);
+    if (typeof wu === "function") {
+      wu(Promise.resolve(task));
+      return;
+    }
+  } catch {
+    /* local next dev */
+  }
+  void task;
+}
+
 export async function getSiteName(): Promise<string> {
   const env = await getEnv();
   return env.SITE_NAME || "LinkBio";

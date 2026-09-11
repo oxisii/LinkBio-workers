@@ -125,14 +125,9 @@ function timingSafeEqual(a: string, b: string): boolean {
 
 export async function constantTimeEqual(a: string, b: string): Promise<boolean> {
   const enc = new TextEncoder();
-  const ab = enc.encode(a);
-  const bb = enc.encode(b);
-  if (ab.length !== bb.length) {
-    // still run a compare to reduce timing variance on length leak paths
-    await crypto.subtle.digest("SHA-256", ab);
-    return false;
-  }
+  const ha = new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(a)));
+  const hb = new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(b)));
   let out = 0;
-  for (let i = 0; i < ab.length; i++) out |= ab[i]! ^ bb[i]!;
+  for (let i = 0; i < ha.length; i++) out |= ha[i]! ^ hb[i]!;
   return out === 0;
 }

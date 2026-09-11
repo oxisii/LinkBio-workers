@@ -48,6 +48,7 @@ export function middleware(req: NextRequest) {
         path: "/",
         sameSite: "lax",
         maxAge: 86400,
+        httpOnly: true,
         secure: isSecureRequest(req),
       });
     }

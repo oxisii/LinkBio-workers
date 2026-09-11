@@ -140,9 +140,14 @@ export class BioStore {
    * Local / remote backup document.
    * Never includes env secrets (ADMIN_PASSWORD, SESSION_SECRET, …).
    */
-  async exportBackup(options?: { includeAnalytics?: boolean; includeBackupConfig?: boolean }): Promise<BackupPayload> {
+  async exportBackup(options?: {
+    includeAnalytics?: boolean;
+    includeBackupConfig?: boolean;
+    includeBackupSecrets?: boolean;
+  }): Promise<BackupPayload> {
     const includeAnalytics = options?.includeAnalytics !== false;
-    const includeBackupConfig = options?.includeBackupConfig !== false;
+    const includeBackupConfig = options?.includeBackupConfig === true;
+    const includeBackupSecrets = options?.includeBackupSecrets === true;
     const [profile, links, settings, analytics, backup] = await Promise.all([
       this.getProfile(),
       this.getLinks(),
@@ -158,12 +163,20 @@ export class BioStore {
       settings,
     };
     if (analytics) payload.analytics = analytics;
-    if (backup) payload.backup = backup;
+    if (backup) {
+      payload.backup = includeBackupSecrets
+        ? backup
+        : {
+            ...backup,
+            webdav: { ...backup.webdav, password: "" },
+            gist: { ...backup.gist, token: "" },
+          };
+    }
     return payload;
   }
 
   async exportAll(): Promise<BackupPayload> {
-    return this.exportBackup({ includeAnalytics: true, includeBackupConfig: true });
+    return this.exportBackup({ includeAnalytics: true, includeBackupConfig: false });
   }
 
   async importAll(
@@ -273,6 +286,7 @@ export class BioStore {
   }
 
   private async persistSplitAnalytics(analytics: Analytics): Promise<void> {
+    const keep = new Set<string>();
     const ops: Promise<unknown>[] = [
       this.kv.put(KV_KEYS.ANALYTICS_PV, String(analytics.pageViews)),
       this.kv.put(KV_KEYS.ANALYTICS_UPDATED, analytics.lastUpdated || new Date().toISOString()),
@@ -280,8 +294,27 @@ export class BioStore {
     for (const [id, count] of Object.entries(analytics.linkClicks || {})) {
       const safeId = id.replace(/[^a-zA-Z0-9._:-]/g, "").slice(0, 64);
       if (!safeId) continue;
-      ops.push(this.kv.put(`${KV_KEYS.ANALYTICS_CLICK_PREFIX}${safeId}`, String(Math.max(0, Math.floor(count)))));
+      keep.add(safeId);
+      ops.push(
+        this.kv.put(
+          `${KV_KEYS.ANALYTICS_CLICK_PREFIX}${safeId}`,
+          String(Math.max(0, Math.floor(count))),
+        ),
+      );
     }
+    let cursor: string | undefined;
+    do {
+      const page = await this.kv.list({
+        prefix: KV_KEYS.ANALYTICS_CLICK_PREFIX,
+        cursor,
+        limit: 1000,
+      });
+      for (const key of page.keys) {
+        const id = key.name.slice(KV_KEYS.ANALYTICS_CLICK_PREFIX.length);
+        if (!keep.has(id)) ops.push(this.kv.delete(key.name));
+      }
+      cursor = page.list_complete ? undefined : page.cursor;
+    } while (cursor);
     await Promise.all(ops);
   }
 
@@ -338,7 +371,7 @@ export function sanitizeProfile(input: Partial<Profile>): Profile {
     name: str(input.name, 80) || DEFAULT_PROFILE.name,
     username: str(input.username, 40).replace(/[^a-zA-Z0-9._-]/g, "") || DEFAULT_PROFILE.username,
     bio: str(input.bio, 500) || "",
-    avatar: str(input.avatar, 2000),
+    avatar: sanitizeUrl(str(input.avatar, 2000)),
     location: str(input.location, 120),
     email: str(input.email, 120),
   };
@@ -390,7 +423,7 @@ export function sanitizeSettings(input: Partial<Settings> & { darkMode?: boolean
     accentColor: /^#[0-9a-fA-F]{3,8}$/.test(accent) ? accent : DEFAULT_SETTINGS.accentColor,
     themeColorMode,
     customColor: /^#[0-9a-fA-F]{3,8}$/.test(customColor) ? customColor : DEFAULT_SETTINGS.customColor,
-    background: str(input.background, 2000),
+    background: sanitizeUrl(str(input.background, 2000)),
     showFooter: input.showFooter !== false && footerMode !== "off",
     footerMode: input.showFooter === false ? "off" : footerMode,
     footerText: str(input.footerText, 500),
